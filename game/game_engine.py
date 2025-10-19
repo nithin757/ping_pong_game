@@ -25,7 +25,11 @@ class GameEngine:
         self.font = pygame.font.SysFont("Arial", 30)
 
         # New: default winning target
-        self.target_score = 5
+        self.player_match_wins = 0
+        self.ai_match_wins = 0
+        self.target_score = 5      # points to win one match
+        self.series_best_of = 3    # default best-of count
+
 
 
     def handle_input(self):
@@ -81,19 +85,39 @@ class GameEngine:
     def check_game_over(self, screen):
         winner_text = None
 
+        # Check for match winner (one game up to target_score)
         if self.player_score >= self.target_score:
-            winner_text = "Player Wins!"
+            self.player_match_wins += 1
+            self.player_score = 0
+            self.ai_score = 0
+            self.ball.reset(direction=random.choice([-1, 1]))
+
         elif self.ai_score >= self.target_score:
-            winner_text = "AI Wins!"
+            self.ai_match_wins += 1
+            self.player_score = 0
+            self.ai_score = 0
+            self.ball.reset(direction=random.choice([-1, 1]))
+
+        # Check for overall series winner
+        needed_wins = (self.series_best_of // 2) + 1
+        if self.player_match_wins >= needed_wins:
+            winner_text = "Player Wins the Series!"
+        elif self.ai_match_wins >= needed_wins:
+            winner_text = "AI Wins the Series!"
 
         if winner_text:
-            # --- Display Winner Message ---
+            # Show final result
             screen.fill((0, 0, 0))
             win_surface = self.font.render(winner_text, True, (255, 255, 255))
-            win_rect = win_surface.get_rect(center=(self.width // 2, self.height // 2 - 50))
+            win_rect = win_surface.get_rect(center=(self.width // 2, self.height // 2 - 60))
             screen.blit(win_surface, win_rect)
 
-            # --- Display Replay Menu ---
+            summary = f"Final Score: Player {self.player_match_wins} - {self.ai_match_wins} AI"
+            summary_surface = self.font.render(summary, True, (180, 180, 180))
+            summary_rect = summary_surface.get_rect(center=(self.width // 2, self.height // 2 - 20))
+            screen.blit(summary_surface, summary_rect)
+
+            # Replay Menu
             options = [
                 "Press 3 for Best of 3",
                 "Press 5 for Best of 5",
@@ -102,12 +126,12 @@ class GameEngine:
             ]
             for i, opt in enumerate(options):
                 text_surface = self.font.render(opt, True, (200, 200, 200))
-                text_rect = text_surface.get_rect(center=(self.width // 2, self.height // 2 + i * 40))
+                text_rect = text_surface.get_rect(center=(self.width // 2, self.height // 2 + i * 40 + 40))
                 screen.blit(text_surface, text_rect)
 
             pygame.display.flip()
 
-            # Wait for user input
+            # Wait for replay choice
             waiting = True
             while waiting:
                 for event in pygame.event.get():
@@ -119,21 +143,24 @@ class GameEngine:
                             pygame.quit()
                             raise SystemExit
                         elif event.key == pygame.K_3:
-                            self.target_score = 2  # Best of 3 → first to 2
+                            self.series_best_of = 3
                             waiting = False
                         elif event.key == pygame.K_5:
-                            self.target_score = 3  # Best of 5 → first to 3
+                            self.series_best_of = 5
                             waiting = False
                         elif event.key == pygame.K_7:
-                            self.target_score = 4  # Best of 7 → first to 4
+                            self.series_best_of = 7
                             waiting = False
 
                 pygame.time.wait(50)
 
-            # Reset for new match
+            # Reset series data
+            self.player_match_wins = 0
+            self.ai_match_wins = 0
             self.player_score = 0
             self.ai_score = 0
             self.ball.reset(direction=random.choice([-1, 1]))
+
 
 
 
